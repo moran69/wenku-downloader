@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>百度文库下载器</title>
+<style>
+:root{
+  --brand:#4f46e5; --brand2:#7c3aed; --bg:#f3f4f6;
+  --card:#fff; --border:#e5e7eb; --text:#1f2937; --muted:#9ca3af;
+  --green:#10b981; --red:#ef4444; --amber:#f59e0b; --blue:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg); color:var(--text); min-height:100vh;
+}
+/* 顶栏 */
+header{
+  background:linear-gradient(135deg,#4f46e5,#7c3aed); color:#fff;
+  padding:18px 28px; display:flex; align-items:center; justify-content:space-between;
+  box-shadow:0 2px 12px rgba(79,70,229,.25); position:sticky; top:0; z-index:10;
+}
+header .title{display:flex;align-items:center;gap:12px}
+header .title .icon{font-size:26px}
+header .title h1{font-size:19px;font-weight:700}
+header .title span.sub{font-size:12px;opacity:.85;display:block;font-weight:400}
+header .tabs{display:flex;gap:6px}
+header .tabs button{
+  background:rgba(255,255,255,.15); border:none; color:#fff; padding:8px 18px;
+  border-radius:8px; font-size:14px; cursor:pointer; transition:.2s; font-weight:500;
+}
+header .tabs button:hover{background:rgba(255,255,255,.28)}
+header .tabs button.active{background:#fff;color:var(--brand)}
+header .logout{background:rgba(255,255,255,.15);border:none;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px}
+header .logout:hover{background:rgba(255,255,255,.28)}
+
+.wrap{max-width:980px;margin:0 auto;padding:28px 20px 60px}
+
+/* 卡片 */
+.card{background:var(--card);border-radius:14px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:20px}
+.card h2{font-size:16px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+/* 输入区 */
+.url-row{display:flex;gap:10px}
+.url-row input{
+  flex:1;padding:13px 16px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;outline:none;transition:.2s;
+}
+.url-row input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.btn{
+  padding:13px 24px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:.2s;
+}
+.btn-primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(79,70,229,.3)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-ghost{background:#f3f4f6;color:#4b5563}
+.btn-ghost:hover{background:#e5e7eb}
+.btn-sm{padding:8px 14px;font-size:13px}
+.hint{font-size:13px;color:var(--muted);margin-top:10px}
+
+/* 任务列表 */
+.job{border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.job-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.job-url{font-size:13px;color:#4b5563;word-break:break-all;max-width:62%}
+.job-meta{font-size:12px;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:600}
+.badge.pending{background:#fef3c7;color:#b45309}
+.badge.downloading{background:#dbeafe;color:#1d4ed8}
+.badge.done{background:#d1fae5;color:#047857}
+.badge.failed{background:#fee2e2;color:#b91c1c}
+.spinner{width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.logs{margin-top:10px;background:#0f172a;color:#cbd5e1;border-radius:8px;padding:10px 12px;font-size:12px;font-family:"SF Mono",Consolas,monospace;max-height:140px;overflow:auto}
+.logs div{padding:1px 0}
+.job-file{margin-top:10px;font-size:13px;display:flex;align-items:center;gap:8px}
+.job-file a{color:var(--brand);text-decoration:none;font-weight:600}
+.job-file a:hover{text-decoration:underline}
+.job-err{margin-top:10px;color:var(--red);font-size:13px}
+
+/* 文件表 */
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--border);font-size:14px}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+td .fname{font-weight:600;color:var(--text)}
+.ext{display:inline-block;background:#eef2ff;color:#4338ca;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;text-transform:uppercase}
+td .actions{display:flex;gap:8px}
+td .actions a,.td .actions button{font-size:13px;text-decoration:none}
+.del{color:var(--red);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px}
+.del:hover{background:#fee2e2}
+.size{color:var(--muted);font-size:12px}
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:14px}
+
+/* cookie 区 */
+.cookie-status{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.ck{display:flex;align-items:center;gap:6px;background:#f9fafb;border:1px solid var(--border);padding:7px 12px;border-radius:8px;font-size:13px}
+.ck .dot{width:9px;height:9px;border-radius:50%;background:var(--red)}
+.ck.yes .dot{background:var(--green)}
+.ck .lab{color:var(--muted);font-size:12px}
+textarea{
+  width:100%;height:200px;padding:14px;border:1.5px solid var(--border);border-radius:10px;font-family:"SF Mono",Consolas,monospace;
+  font-size:12px;resize:vertical;outline:none;transition:.2s;line-height:1.6;
+}
+textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center}
+.check-result{margin-top:14px;padding:12px 14px;border-radius:10px;font-size:14px;display:none}
+.check-result.ok{background:#d1fae5;color:#065f46;display:block}
+.check-result.bad{background:#fee2e2;color:#991b1b;display:block}
+.check-result.info{background:#dbeafe;color:#1e40af;display:block}
+.section-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7}
+.section-note code{background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:11px}
+
+.page{display:none}
+.page.active{display:block}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <div class="icon">📚</div>
+    <div>
+      <h1>百度文库下载器</h1>
+      <span class="sub">VIP 会员 · 原格式下载</span>
+    </div>
+  </div>
+  <div class="tabs">
+    <button id="tab-download" class="active" onclick="switchTab('download')">⬇️ 下载</button>
+    <button id="tab-cookie" onclick="switchTab('cookie')">🍪 Cookie 管理</button>
+  </div>
+  <button class="logout" onclick="location.href='/logout'">退出</button>
+</header>
+
+<div class="wrap">
+
+  <!-- 下载页 -->
+  <div id="page-download" class="page active">
+    <div class="card">
+      <h2>📥 提交下载</h2>
+      <div class="url-row">
+        <input id="urlInput" type="text" placeholder="粘贴百度文库文档链接，如 https://wenku.baidu.com/view/xxxx.html" onkeydown="if(event.key==='Enter')submitUrl()">
+        <button class="btn btn-primary" id="submitBtn" onclick="submitUrl()">下载</button>
+      </div>
+      <p class="hint">提示：会员文档直接下载原格式（doc/ppt/pdf/xlsx 等）；个别标注“单独购买”的文档不在 VIP 范围内。</p>
+    </div>
+
+    <div class="card">
+      <h2>⚡ 最近任务</h2>
+      <div id="jobsBox"><div class="empty">暂无任务</div></div>
+    </div>
+
+    <div class="card">
+      <h2>📁 已下载文件</h2>
+      <div id="filesBox"><div class="empty">加载中…</div></div>
+    </div>
+  </div>
+
+  <!-- Cookie 页 -->
+  <div id="page-cookie" class="page">
+    <div class="card">
+      <h2>🍪 Cookie 状态</h2>
+      <div id="ckStatus" class="cookie-status">加载中…</div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-sm" id="checkBtn" onclick="checkLogin()">🔍 联网检测登录态</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadCookies()">刷新</button>
+      </div>
+      <div id="checkResult" class="check-result"></div>
+      <p class="section-note">说明：联网检测会启动浏览器访问文库首页，约需 10 秒。<br>BDUSS 是会员下载的核心令牌，缺失则无法登录。</p>
+    </div>
+
+    <div class="card">
+      <h2>✏️ 更新 Cookie</h2>
+      <textarea id="cookieInput" placeholder="把浏览器里复制的整条 Cookie 串粘贴到这里…"></textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="saveCookieBtn" onclick="saveCookies()">💾 保存</button>
+        <button class="btn btn-ghost" onclick="loadCookies(true)">↺ 撤销（重新读取）</button>
+        <span id="cookieMsg" style="font-size:13px"></span>
+      </div>
+      <p class="section-note">
+        如何获取：电脑浏览器登录百度文库 → F12 打开开发者工具 → Network → 刷新页面 → 点任意请求 → Headers 里复制 <code>Cookie</code> 整条 → 粘贴到上方 → 保存。<br>
+        Cookie 会过期（几天到两周），过期后重新复制即可。
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let pollTimer = null;
+
+function switchTab(t){
+  ['download','cookie'].forEach(p=>$('#page-'+p).classList.toggle('active', p===t));
+  ['download','cookie'].forEach(p=>$('#tab-'+p).classList.toggle('active', p===t));
+  if(t==='cookie') loadCookies();
+}
+
+/* ---------- 下载 ---------- */
+async function submitUrl(){
+  const url = $('#urlInput').value.trim();
+  if(!url){ return alert('请输入文档链接'); }
+  const btn = $('#submitBtn');
+  btn.disabled = true; btn.textContent = '提交中…';
+  try{
+    const r = await fetch('/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+    const d = await r.json();
+    if(!r.ok){ alert(d.error||'提交失败'); }
+    else { $('#urlInput').value=''; startPolling(); renderJobs(); }
+  }catch(e){ alert('网络错误'); }
+  finally{ btn.disabled=false; btn.textContent='下载'; }
+}
+
+function startPolling(){ if(!pollTimer) pollTimer = setInterval(()=>{ renderJobs(); renderFilesMaybe(); }, 2500); }
+function stopPollingIfIdle(){ /* 在 renderJobs 里判断 */ }
+
+async function renderJobs(){
+  try{
+    const jobs = await (await fetch('/api/jobs')).json();
+    const box = $('#jobsBox');
+    if(!jobs.length){ box.innerHTML='<div class="empty">暂无任务</div>'; if(pollTimer){clearInterval(pollTimer);pollTimer=null;} return; }
+    box.innerHTML = jobs.map(j=>{
+      const status = j.status;
+      const badge = {
+        pending:'<span class="badge pending"><span class="spinner"></span>排队</span>',
+        downloading:'<span class="badge downloading"><span class="spinner"></span>下载中</span>',
+        done:'<span class="badge done">✓ 完成</span>',
+        failed:'<span class="badge failed">✗ 失败</span>',
+      }[status]||status;
+      const logs = (j.logs&&j.logs.length)?'<div class="logs">'+j.logs.map(l=>`<div>${escapeHtml(l.m)}</div>`).join('')+'</div>':'';
+      // 文件展示：支持单文件(j.file)和多文件(j.files)
+      let fileHtml = '';
+      if(status==='done'){
+        if(j.file){
+          fileHtml = `<div class="job-file">📄 <a href="/api/download/${encodeURIComponent(j.file)}" target="_blank">${escapeHtml(j.file)}</a></div>`;
+        } else if(j.files&&j.files.length){
+          fileHtml = j.files.map(fn=>`<div class="job-file">📄 <a href="/api/download/${encodeURIComponent(fn)}" target="_blank">${escapeHtml(fn)}</a></div>`).join('');
+        }
+        // 方法标注
+        if(j.method==='extract'){
+          let info = `📝 文字提取模式 · ${j.text_chars||0} 字`;
+          if(j.total_pages) info += ` · 截图 ${j.pages||0}/${j.total_pages} 页`;
+          if(j.partial) info += ` · ⚠️ 仅获取了部分内容（文库限制预览页数）`;
+          fileHtml = `<div class="job-file" style="color:#6b7280;font-size:12px">${info}</div>` + fileHtml;
+        } else if(j.method==='original'){
+          fileHtml = `<div class="job-file" style="color:#10b981;font-size:12px">✅ 原格式下载</div>` + fileHtml;
+        }
+      }
+      const err = (status==='failed'&&j.error)?`<div class="job-err">${escapeHtml(j.error)}</div>`:'';
+      const time = j.elapsed!=null?`${j.elapsed}s`:'';
+      return `<div class="job">
+        <div class="job-head">
+          <div class="job-url">${escapeHtml(j.url)}</div>
+          <div>${badge}<span class="job-meta" style="margin-left:10px">${time}</span></div>
+        </div>
+        ${logs}${fileHtml}${err}
+      </div>`;
+    }).join('');
+    const hasActive = jobs.some(j=>j.status==='pending'||j.status==='downloading');
+    if(!hasActive && pollTimer){ /* 保持一会儿刷新文件 */ renderFiles(); }
+  }catch(e){}
+}
+
+async function renderFilesMaybe(){ await renderFiles(); }
+
+async function renderFiles(){
+  try{
+    const files = await (await fetch('/api/files')).json();
+    const box = $('#filesBox');
+    if(!files.length){ box.innerHTML='<div class="empty">还没有下载的文件</div>'; return; }
+    box.innerHTML = '<table><thead><tr><th>文件名</th><th>类型</th><th>大小</th><th>时间</th><th>操作</th></tr></thead><tbody>'
+      + files.map(f=>`<tr>
+        <td class="fname">${escapeHtml(f.name)}</td>
+        <td><span class="ext">${escapeHtml(f.ext)}</span></td>
+        <td><span class="size">${humanSize(f.size)}</span></td>
+        <td><span class="size">${new Date(f.mtime*1000).toLocaleString('zh-CN')}</span></td>
+        <td class="actions"><a class="btn btn-ghost btn-sm" href="/api/download/${encodeURIComponent(f.name)}" target="_blank">下载</a> <button class="del" onclick="delFile('${encodeURIComponent(f.name)}')">删除</button></td>
+      </tr>`).join('') + '</tbody></table>';
+  }catch(e){}
+}
+
+async function delFile(name){
+  if(!confirm('确定删除该文件？')) return;
+  await fetch('/api/delete-file/'+name,{method:'DELETE'});
+  renderFiles();
+}
+
+/* ---------- Cookie ---------- */
+async function loadCookies(refresh){
+  try{
+    const d = await (await fetch('/api/cookies'+(refresh?'?_='+Date.now():''))).json();
+    $('#cookieInput').value = d.raw||'';
+    const s = d.summary||{};
+    const keys = s.keys||{};
+    let html = Object.entries(keys).map(([k,v])=>
+      `<div class="ck ${v.present?'yes':''}"><span class="dot"></span><b>${k}</b><span class="lab">${v.label}${v.present?'':' 缺失'}</span></div>`
+    ).join('');
+    if(s.error) html = `<div class="ck"><span class="dot"></span><b>${escapeHtml(s.error)}</b></div>`;
+    $('#ckStatus').innerHTML = html || '<div class="ck"><span class="dot"></span>未读取到 Cookie</div>';
+  }catch(e){ $('#ckStatus').textContent='读取失败'; }
+}
+
+async function saveCookies(){
+  const raw = $('#cookieInput').value.trim();
+  const msg = $('#cookieMsg');
+  const btn = $('#saveCookieBtn');
+  btn.disabled=true; btn.textContent='保存中…'; msg.textContent=''; msg.style.color='#9ca3af';
+  try{
+    const r = await fetch('/api/cookies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookies:raw})});
+    const d = await r.json();
+    if(!r.ok){ msg.textContent='✗ '+(d.error||'保存失败'); msg.style.color='#ef4444'; }
+    else { msg.textContent='✓ 已保存'; msg.style.color='#10b981'; loadCookies(); }
+  }catch(e){ msg.textContent='✗ 网络错误'; msg.style.color='#ef4444'; }
+  finally{ btn.disabled=false; btn.textContent='💾 保存'; }
+}
+
+async function checkLogin(){
+  const btn=$('#checkBtn'); const box=$('#checkResult');
+  btn.disabled=true; btn.textContent='检测中…（约10秒）';
+  box.className='check-result info'; box.textContent='正在启动浏览器访问文库首页…';
+  try{
+    const d = await (await fetch('/api/check-login',{method:'POST'})).json();
+    if(d.error){ box.className='check-result bad'; box.textContent='✗ '+d.error; }
+    else if(d.logged_in){ box.className='check-result ok'; box.textContent='✓ 登录态有效'+(d.vip?'，且检测到 VIP 标识，可以正常下载。':'。'); }
+    else { box.className='check-result bad'; box.textContent='✗ Cookie 已失效或未登录，请重新复制 Cookie。'; }
+  }catch(e){ box.className='check-result bad'; box.textContent='✗ 请求失败'; }
+  finally{ btn.disabled=false; btn.textContent='🔍 联网检测登录态'; }
+}
+
+/* ---------- 工具 ---------- */
+function escapeHtml(s){ return (s+'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function humanSize(b){ if(b<1024)return b+' B'; if(b<1048576)return (b/1024).toFixed(1)+' KB'; if(b<1073741824)return (b/1048576).toFixed(1)+' MB'; return (b/1073741824).toFixed(2)+' GB'; }
+
+/* 初始化 */
+renderJobs(); renderFiles();
+startPolling();
+</script>
+</body>
+</html>

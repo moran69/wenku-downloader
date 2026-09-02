@@ -1,0 +1,16 @@
+[Unit]
+Description=Wenku Downloader Web (Flask)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/wenku-downloader
+ExecStart=/home/ubuntu/wenku-downloader/.venv/bin/python /home/ubuntu/wenku-downloader/app.py
+Restart=always
+RestartSec=3
+StandardOutput=append:/home/ubuntu/wenku-downloader/web.log
+StandardError=append:/home/ubuntu/wenku-downloader/web.log
+
+[Install]
+WantedBy=multi-user.target
