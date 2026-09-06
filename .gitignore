@@ -2,6 +2,8 @@
 cookies.txt
 password.txt
 .secret_key
+data.db
+data.db-*
 
 # 用户数据与运行产物
 downloads/

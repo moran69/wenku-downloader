@@ -123,9 +123,11 @@ def _extract_text_from_jsonp(body: str) -> str:
     return "".join(parts)
 
 
-async def download_document(url: str, log=None) -> dict:
+async def download_document(url: str, log=None, output_dir: Path | None = None) -> dict:
     """下载文档。返回 {success, file?, files?, error?, method?, pages?, total_pages?}。"""
     log = log or (lambda m: None)
+    out_dir = Path(output_dir) if output_dir else OUTPUT_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
     log(f"开始处理: {url}")
     cookies = load_cookies()
     log(f"已加载 {len(cookies)} 条 Cookie")
@@ -208,7 +210,7 @@ async def download_document(url: str, log=None) -> dict:
                                 log(f"已点击: {sel}，等待下载…")
                             download = await dl_info.value
                             suggested = download.suggested_filename or "wenku_file"
-                            dest = OUTPUT_DIR / safe_filename(suggested)
+                            dest = out_dir / safe_filename(suggested)
                             await download.save_as(str(dest))
                             sz = dest.stat().st_size
                             log(f"✅ 原文件下载成功: {dest.name} ({sz/1024:.0f} KB)")
@@ -267,14 +269,14 @@ async def download_document(url: str, log=None) -> dict:
                 canvas_id = f"original-creader-canvas-{target}"
                 canvas = await page.query_selector(f"#{canvas_id}")
                 if canvas and await canvas.is_visible():
-                    shot = OUTPUT_DIR / f"_screenshot_{target}.png"
+                    shot = out_dir / f"_screenshot_{target}.png"
                     await canvas.screenshot(path=str(shot))
                     if shot.stat().st_size > 1000:
                         screenshots.append((target, shot))
                         log(f"  截图第 {target} 页 ✓")
 
             # 清理旧截图文件
-            for f in OUTPUT_DIR.glob("_screenshot_*.png"):
+            for f in out_dir.glob("_screenshot_*.png"):
                 if (f.stem.split("_")[-1]).isdigit():
                     pageno = int(f.stem.split("_")[-1])
                     if pageno > len(screenshots):
@@ -289,7 +291,7 @@ async def download_document(url: str, log=None) -> dict:
             saved_files = []
             if all_text:
                 txt_name = safe_filename(title) + ".txt"
-                txt_path = OUTPUT_DIR / txt_name
+                txt_path = out_dir / txt_name
                 txt_path.write_text(all_text, encoding="utf-8")
                 saved_files.append(txt_name)
                 log(f"文字已保存: {txt_name}")
@@ -299,7 +301,7 @@ async def download_document(url: str, log=None) -> dict:
                 try:
                     from PIL import Image
                     pdf_name = safe_filename(title) + ".pdf"
-                    pdf_path = OUTPUT_DIR / pdf_name
+                    pdf_path = out_dir / pdf_name
                     images = [Image.open(str(s[1])).convert("RGB") for s in screenshots]
                     if len(images) == 1:
                         images[0].save(str(pdf_path))
@@ -315,7 +317,7 @@ async def download_document(url: str, log=None) -> dict:
                     log("Pillow 未安装，截图保存为单独 PNG 文件")
                     for pageno, shot in screenshots:
                         png_name = f"{safe_filename(title)}_第{pageno}页.png"
-                        shot.rename(OUTPUT_DIR / png_name)
+                        shot.rename(out_dir / png_name)
                         saved_files.append(png_name)
 
             return {
